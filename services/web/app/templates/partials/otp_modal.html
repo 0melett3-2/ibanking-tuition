@@ -1,0 +1,143 @@
+<div class="max-w-xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+  <!-- Header -->
+  <div class="bg-gradient-to-r from-blue-700 to-indigo-800 p-6 text-white text-center">
+    <div class="inline-flex items-center justify-center w-12 h-12 bg-white/10 rounded-full mb-2">
+      <svg class="w-6 h-6 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold">Xác thực giao dịch OTP</h2>
+    <p class="text-xs text-blue-200 mt-1">Giao dịch #{{ txn.transaction_id }} · Đóng học phí TDTU</p>
+  </div>
+
+  <div class="p-6 space-y-5">
+    <!-- Tóm tắt số tiền & Sinh viên -->
+    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs space-y-2">
+      <div class="flex justify-between">
+        <span class="text-slate-500">Sinh viên nhận đóng:</span>
+        <span class="font-bold text-slate-800">{{ txn.student_name }} ({{ txn.student_code }})</span>
+      </div>
+      <div class="flex justify-between items-center pt-1 border-t border-slate-200">
+        <span class="text-slate-500">Số tiền thanh toán:</span>
+        <span class="font-extrabold text-blue-700 text-base font-mono">{{ txn.amount | currency }}</span>
+      </div>
+    </div>
+
+    <!-- Thông báo email -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 flex items-start space-x-2">
+      <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      </svg>
+      <div>
+        <span>Mã OTP đã được gửi đến email <strong>{{ user_email }}</strong>.</span>
+        <div class="text-[11px] text-blue-600 mt-0.5">
+          (Đang dùng Mailpit local? Xem OTP tại <a href="http://localhost:8025" target="_blank" class="underline font-bold">localhost:8025</a>)
+        </div>
+      </div>
+    </div>
+
+    {% if resend_message %}
+    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 text-xs text-emerald-800 flex items-center space-x-2">
+      <svg class="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+      </svg>
+      <span>{{ resend_message }}</span>
+    </div>
+    {% endif %}
+
+    {% if error %}
+    <div class="bg-red-50 border-l-4 border-red-500 p-3 rounded-r text-xs text-red-700 flex items-start space-x-2">
+      <svg class="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <div>{{ error }}</div>
+    </div>
+    {% endif %}
+
+    <!-- Form nhập OTP -->
+    <form hx-post="/pay/transactions/{{ txn.transaction_id }}/confirm"
+          hx-target="#pay-container"
+          hx-indicator="#confirm-spinner"
+          class="space-y-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+      <div>
+        <div class="flex justify-between items-center mb-1">
+          <label for="otp" class="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+            Nhập mã OTP (6 chữ số)
+          </label>
+          <div id="otp-timer" class="text-xs font-mono font-bold text-red-600">
+            <!-- JS countdown -->
+          </div>
+        </div>
+        <input id="otp" name="otp" type="text" maxlength="6" pattern="[0-9]{6}" required autofocus
+               placeholder="123456" autocomplete="one-time-code"
+               class="w-full text-center tracking-[0.5em] font-mono text-2xl py-3 border-2 border-slate-300 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition">
+        <p class="text-[11px] text-slate-400 text-center mt-1">Mỗi OTP có hiệu lực tối đa 5 phút và chỉ dùng được 1 lần.</p>
+      </div>
+
+      <button type="submit"
+              class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center space-x-2 text-sm">
+        <span>Xác nhận thanh toán</span>
+        <svg id="confirm-spinner" class="htmx-indicator w-4 h-4 animate-spin text-white ml-2" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+      </button>
+    </form>
+
+    <!-- Gửi lại OTP & Hủy bỏ -->
+    <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+      <form hx-post="/pay/transactions/{{ txn.transaction_id }}/resend"
+            hx-target="#pay-container"
+            hx-indicator="#resend-spinner">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button id="btn-resend" type="submit"
+                class="text-blue-700 hover:text-blue-900 font-semibold flex items-center space-x-1 py-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span>Gửi lại OTP</span>
+          <svg id="resend-spinner" class="htmx-indicator w-3 h-3 animate-spin text-blue-700" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+        </button>
+      </form>
+
+      <a href="/pay" class="text-slate-500 hover:text-slate-800 transition">
+        Hủy giao dịch
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const expiryIso = "{{ txn.otp_expires_at }}";
+  const timerElem = document.getElementById('otp-timer');
+  if (!timerElem) return;
+
+  function updateTimer() {
+    const now = new Date().getTime();
+    const expiry = new Date(expiryIso).getTime();
+    const distance = expiry - now;
+
+    if (distance <= 0) {
+      timerElem.innerHTML = "Hết hạn";
+      timerElem.className = "text-xs font-mono font-bold text-red-600";
+      return;
+    }
+    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+    timerElem.innerHTML = `Còn lại: ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  }
+
+  updateTimer();
+  const interval = setInterval(updateTimer, 1000);
+})();
+</script>

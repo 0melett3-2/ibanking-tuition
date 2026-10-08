@@ -1,0 +1,115 @@
+<div class="max-w-xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+  {% if status == 'SUCCESS' %}
+  <!-- Giao dịch thành công -->
+  <div class="bg-gradient-to-r from-emerald-600 to-teal-700 p-8 text-white text-center">
+    <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-3 shadow-inner">
+      <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+      </svg>
+    </div>
+    <h2 class="text-2xl font-bold">Thanh toán thành công!</h2>
+    <p class="text-xs text-emerald-100 mt-1">Khoản học phí đã được thanh toán và cập nhật vào hệ thống TDTU.</p>
+  </div>
+
+  <div class="p-6 space-y-6">
+    <div class="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-3 text-sm">
+      <div class="flex justify-between py-1 border-b border-slate-200">
+        <span class="text-slate-500">Mã giao dịch</span>
+        <span class="font-mono font-bold text-slate-800">#{{ txn.transaction_id }}</span>
+      </div>
+      <div class="flex justify-between py-1 border-b border-slate-200">
+        <span class="text-slate-500">Mã số sinh viên</span>
+        <span class="font-mono font-bold text-slate-800">{{ txn.student_code }}</span>
+      </div>
+      <div class="flex justify-between py-1 border-b border-slate-200">
+        <span class="text-slate-500">Họ và tên sinh viên</span>
+        <span class="font-bold text-slate-800">{{ txn.student_name }}</span>
+      </div>
+      <div class="flex justify-between py-1 border-b border-slate-200">
+        <span class="text-slate-500">Thời gian thực hiện</span>
+        <span class="text-slate-700 text-xs">{{ (txn.completed_at or txn.created_at) | datetime }}</span>
+      </div>
+      <div class="flex justify-between items-center pt-2">
+        <span class="text-slate-600 font-semibold">Số tiền thanh toán</span>
+        <span class="font-extrabold text-blue-700 text-xl font-mono">{{ txn.amount | currency }}</span>
+      </div>
+    </div>
+
+    <!-- Thông báo email biên nhận -->
+    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-800 flex items-start space-x-2">
+      <svg class="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      </svg>
+      <div>
+        <span>Email biên nhận xác nhận thanh toán thành công đã được gửi đến hộp thư của bạn.</span>
+        <div class="text-[11px] text-emerald-600 mt-0.5">
+          (Kiểm tra tại Mailpit: <a href="http://localhost:8025" target="_blank" class="underline font-bold">localhost:8025</a>)
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 pt-2">
+      <a href="/pay"
+         class="w-full text-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2.5 px-4 rounded-xl text-sm transition">
+        Đóng học phí khác
+      </a>
+      <a href="/history"
+         class="w-full text-center bg-blue-700 hover:bg-blue-800 text-white font-medium py-2.5 px-4 rounded-xl text-sm transition shadow-sm">
+        Xem lịch sử
+      </a>
+    </div>
+  </div>
+
+  {% elif status == 'DEBITED' %}
+  <!-- Giao dịch đang chờ xác nhận (HTTP 202) -> HTMX Poll -->
+  <div class="bg-gradient-to-r from-amber-500 to-orange-600 p-8 text-white text-center"
+       hx-get="/pay/transactions/{{ txn.transaction_id }}/status"
+       hx-trigger="every 2s"
+       hx-target="#pay-container">
+    <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-3 shadow-inner">
+      <svg class="w-10 h-10 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+      </svg>
+    </div>
+    <h2 class="text-2xl font-bold">Giao dịch đang được xử lý...</h2>
+    <p class="text-xs text-amber-100 mt-1">Đã trừ tiền thành công. Đang cập nhật trạng thái học phí sang trường...</p>
+  </div>
+
+  <div class="p-6 text-center space-y-4">
+    <p class="text-sm text-slate-600">
+      Hệ thống đang đồng bộ hóa trạng thái giao dịch với dịch vụ Học phí. Vui lòng giữ nguyên màn hình trong giây lát.
+    </p>
+    <div class="text-xs text-slate-400 font-mono">
+      Mã giao dịch: #{{ txn.transaction_id }} · Trạng thái: DEBITED
+    </div>
+  </div>
+
+  {% else %}
+  <!-- Giao dịch thất bại -->
+  <div class="bg-gradient-to-r from-red-600 to-rose-700 p-8 text-white text-center">
+    <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-3 shadow-inner">
+      <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </div>
+    <h2 class="text-2xl font-bold">Thanh toán không thành công</h2>
+    <p class="text-xs text-red-100 mt-1">Giao dịch đã kết thúc hoặc không thể thực hiện.</p>
+  </div>
+
+  <div class="p-6 space-y-5">
+    <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-xs text-red-800 space-y-1">
+      <div class="font-bold">Lý do thất bại:</div>
+      <div>{{ error or txn.fail_reason or 'Giao dịch không hợp lệ hoặc đã hết hạn.' }}</div>
+    </div>
+
+    <div class="text-center pt-2">
+      <a href="/pay"
+         class="inline-block bg-blue-700 hover:bg-blue-800 text-white font-medium py-2.5 px-6 rounded-xl text-sm transition shadow-sm">
+        Thực hiện lại giao dịch
+      </a>
+    </div>
+  </div>
+  {% endif %}
+</div>

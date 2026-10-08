@@ -1,0 +1,24 @@
+# Tự động được nạp khi chạy "docker compose up" - CHỈ DÙNG KHI PHÁT TRIỂN.
+# Sửa code trên máy là service tự reload; mở cổng để xem Swagger và kết nối DB bằng công cụ.
+services:
+  postgres:
+    ports: ["127.0.0.1:5432:5432"]
+
+  user:
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload --reload-dir /app/app --reload-dir /shared
+    volumes: ["./services/user/app:/app/app", "./shared:/shared"]
+    ports: ["127.0.0.1:8001:8001"]     # http://localhost:8001/docs
+
+  tuition:
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8002 --reload --reload-dir /app/app --reload-dir /shared
+    volumes: ["./services/tuition/app:/app/app", "./shared:/shared"]
+    ports: ["127.0.0.1:8002:8002"]     # http://localhost:8002/docs
+
+  payment:
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8003 --reload --reload-dir /app/app --reload-dir /shared
+    volumes: ["./services/payment/app:/app/app", "./shared:/shared"]
+    ports: ["127.0.0.1:8003:8003"]     # http://localhost:8003/docs
+
+  web:
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/app
+    volumes: ["./services/web/app:/app/app"]

@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Thanh toán học phí · iBanking{% endblock %}
+
+{% block content %}
+<div id="pay-container" class="max-w-4xl mx-auto space-y-6">
+  <!-- Tiêu đề trang -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-800 flex items-center space-x-2">
+        <svg class="w-7 h-7 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+        <span>Thanh toán học phí</span>
+      </h1>
+      <p class="text-xs text-slate-500 mt-1">Đóng học phí Đại học Tôn Đức Thắng trực tuyến an toàn qua iBanking</p>
+    </div>
+    <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-2 flex items-center space-x-3">
+      <div class="text-right">
+        <div class="text-xs text-blue-600 font-medium">Số dư khả dụng</div>
+        <div class="text-lg font-bold text-blue-900 font-mono">{{ account.balance | currency }}</div>
+      </div>
+      <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+      </svg>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- Nhóm a: Thông tin người nộp tiền (Cố định, không cho sửa) -->
+    <div class="md:col-span-1">
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sticky top-20">
+        <div class="flex items-center space-x-2 text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">
+          <span class="w-5 h-5 rounded-full bg-blue-700 text-white flex items-center justify-center text-xs">a</span>
+          <span>Người nộp tiền</span>
+        </div>
+        <p class="text-[11px] text-slate-400 mb-3 italic">
+          * Thông tin lấy tự động từ tài khoản đang đăng nhập, không thể chỉnh sửa.
+        </p>
+
+        <div class="space-y-3 text-xs">
+          <div>
+            <label class="text-slate-500 block font-medium">Họ và tên</label>
+            <input type="text" value="{{ user.full_name }}" readonly
+                   class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-slate-800 font-semibold cursor-not-allowed">
+          </div>
+          <div>
+            <label class="text-slate-500 block font-medium">Số điện thoại</label>
+            <input type="text" value="{{ user.phone }}" readonly
+                   class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-slate-800 font-mono cursor-not-allowed">
+          </div>
+          <div>
+            <label class="text-slate-500 block font-medium">Địa chỉ email (nhận OTP)</label>
+            <input type="text" value="{{ user.email }}" readonly
+                   class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-slate-800 font-mono text-xs cursor-not-allowed">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nhóm b & c: Tra cứu và Thanh toán -->
+    <div class="md:col-span-2 space-y-6">
+      <!-- Nhóm b: Tra cứu thông tin học phí -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <div class="flex items-center space-x-2 text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">
+          <span class="w-5 h-5 rounded-full bg-blue-700 text-white flex items-center justify-center text-xs">b</span>
+          <span>Thông tin học phí</span>
+        </div>
+
+        <form hx-get="/pay/lookup"
+              hx-target="#tuition-result"
+              hx-indicator="#lookup-spinner"
+              class="space-y-4">
+          <div>
+            <label for="mssv" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+              Mã số sinh viên (MSSV)
+            </label>
+            <div class="flex gap-2">
+              <input id="mssv" name="mssv" type="text" required placeholder="Nhập MSSV, ví dụ: 52100001"
+                     class="flex-1 px-3 py-2.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent">
+              <button type="submit"
+                      class="bg-blue-700 hover:bg-blue-800 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 shadow-sm">
+                <span>Tra cứu</span>
+                <svg id="lookup-spinner" class="htmx-indicator w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Gợi ý MSSV demo -->
+          <div class="text-xs text-slate-500 flex flex-wrap items-center gap-1.5 pt-1">
+            <span>MSSV thử nghiệm:</span>
+            <button type="button" onclick="setMssv('52100001')" class="font-mono bg-slate-100 hover:bg-blue-100 text-blue-700 px-2 py-0.5 rounded border border-slate-200">52100001 (15tr - UNPAID)</button>
+            <button type="button" onclick="setMssv('52100002')" class="font-mono bg-slate-100 hover:bg-blue-100 text-blue-700 px-2 py-0.5 rounded border border-slate-200">52100002 (PAID)</button>
+            <button type="button" onclick="setMssv('52100003')" class="font-mono bg-slate-100 hover:bg-blue-100 text-blue-700 px-2 py-0.5 rounded border border-slate-200">52100003 (15tr - UNPAID)</button>
+            <button type="button" onclick="setMssv('52100005')" class="font-mono bg-slate-100 hover:bg-blue-100 text-blue-700 px-2 py-0.5 rounded border border-slate-200">52100005 (Chưa có)</button>
+          </div>
+        </form>
+
+        <!-- Vùng trả về kết quả tra cứu (HTMX Target) -->
+        <div id="tuition-result" class="mt-6">
+          <div class="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-8 text-center text-slate-400 text-sm">
+            <svg class="w-10 h-10 mx-auto text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <p>Vui lòng nhập MSSV và nhấn <strong>Tra cứu</strong> để tải thông tin khoản học phí.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function setMssv(code) {
+  const input = document.getElementById('mssv');
+  input.value = code;
+  // Kích hoạt submit form tra cứu
+  htmx.trigger(input.form, 'submit');
+}
+</script>
+{% endblock %}

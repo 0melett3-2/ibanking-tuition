@@ -1,0 +1,116 @@
+# Chạy: docker compose up --build
+# Mặc định (kèm docker-compose.override.yml) là chế độ DEV: hot reload và mở cổng Swagger.
+# Chế độ DEMO (chỉ Web và Mailpit mở cổng):  docker compose -f docker-compose.yml up --build
+name: ibanking
+
+x-backend-env: &backend-env
+  JWT_SECRET: ${JWT_SECRET:?Thiếu JWT_SECRET - hãy copy .env.example thành .env}
+  JWT_EXPIRES_MINUTES: ${JWT_EXPIRES_MINUTES:-60}
+  INTERNAL_API_KEY: ${INTERNAL_API_KEY:?Thiếu INTERNAL_API_KEY - hãy copy .env.example thành .env}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Thiếu POSTGRES_USER - hãy copy .env.example thành .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Thiếu POSTGRES_PASSWORD - hãy copy .env.example thành .env}
+      POSTGRES_DB: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro   # chỉ chạy lần đầu khi volume còn trống
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    environment:
+      MP_MAX_MESSAGES: "500"
+    ports:
+      - "127.0.0.1:8025:8025"   # giao diện xem email (OTP, xác nhận); SMTP :1025 chỉ trong mạng nội bộ
+
+  user:
+    build: { context: ., dockerfile: services/user/Dockerfile }
+    environment:
+      <<: *backend-env
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/user_db
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  tuition:
+    build: { context: ., dockerfile: services/tuition/Dockerfile }
+    environment:
+      <<: *backend-env
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/tuition_db
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  payment:
+    build: { context: ., dockerfile: services/payment/Dockerfile }
+    environment:
+      <<: *backend-env
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/payment_db
+      USER_SERVICE_URL: http://user:8001
+      TUITION_SERVICE_URL: http://tuition:8002
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      MAIL_FROM: ${MAIL_FROM:-no-reply@ibanking.local}
+      OTP_HMAC_SECRET: ${OTP_HMAC_SECRET:?Thiếu OTP_HMAC_SECRET - hãy copy .env.example thành .env}
+      OTP_TTL_MINUTES: ${OTP_TTL_MINUTES:-5}
+      OTP_TTL_SECONDS: ${OTP_TTL_SECONDS:-}   # nếu đặt thì ưu tiên hơn OTP_TTL_MINUTES (dùng khi kiểm thử)
+      OTP_MAX_ATTEMPTS: ${OTP_MAX_ATTEMPTS:-3}
+      OTP_MAX_RESENDS: ${OTP_MAX_RESENDS:-3}
+      OTP_RESEND_COOLDOWN_SECONDS: ${OTP_RESEND_COOLDOWN_SECONDS:-60}
+      RECONCILE_INTERVAL_SECONDS: ${RECONCILE_INTERVAL_SECONDS:-30}
+      TRANSACTION_EXPIRE_GRACE_SECONDS: ${TRANSACTION_EXPIRE_GRACE_SECONDS:-600}
+      RECONCILE_STUCK_SECONDS: ${RECONCILE_STUCK_SECONDS:-60}
+      RECONCILE_RELEASE_WINDOW_SECONDS: ${RECONCILE_RELEASE_WINDOW_SECONDS:-600}
+    depends_on:
+      postgres: { condition: service_healthy }
+      mailpit: { condition: service_started }
+      user: { condition: service_healthy }
+      tuition: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  web:
+    build: { context: ., dockerfile: services/web/Dockerfile }
+    environment:
+      USER_SERVICE_URL: http://user:8001
+      TUITION_SERVICE_URL: http://tuition:8002
+      PAYMENT_SERVICE_URL: http://payment:8003
+      WEB_SECRET_KEY: ${WEB_SECRET_KEY:?Thiếu WEB_SECRET_KEY - hãy copy .env.example thành .env}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    ports:
+      - "8000:8000"             # cổng duy nhất của ứng dụng mở ra ngoài
+    depends_on:
+      user: { condition: service_healthy }
+      tuition: { condition: service_healthy }
+      payment: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+volumes:
+  pgdata:

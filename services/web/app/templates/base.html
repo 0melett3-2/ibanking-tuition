@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}iBanking · Phân hệ Đóng học phí{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <style>
+    .htmx-indicator { display: none; }
+    .htmx-request .htmx-indicator { display: inline-flex; }
+    .htmx-request.htmx-indicator { display: inline-flex; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col font-sans"
+      hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'>
+
+  <!-- Navigation Bar -->
+  <header class="bg-blue-800 text-white shadow-md sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <a href="/" class="flex items-center space-x-2 text-xl font-bold tracking-tight hover:text-blue-100 transition">
+          <svg class="w-7 h-7 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>iBanking</span>
+        </a>
+        <span class="text-xs bg-blue-900 text-blue-200 px-2 py-0.5 rounded font-mono">TDTU Tuition</span>
+      </div>
+
+      {% if user %}
+      <nav class="hidden md:flex items-center space-x-6 text-sm font-medium">
+        <a href="/" class="hover:text-blue-200 transition {% if active_nav == 'home' %}text-yellow-400 font-semibold{% endif %}">Trang chủ</a>
+        <a href="/pay" class="hover:text-blue-200 transition {% if active_nav == 'pay' %}text-yellow-400 font-semibold{% endif %}">Thanh toán học phí</a>
+        <a href="/history" class="hover:text-blue-200 transition {% if active_nav == 'history' %}text-yellow-400 font-semibold{% endif %}">Lịch sử giao dịch</a>
+      </nav>
+
+      <div class="flex items-center space-x-4">
+        {% if account %}
+        <div class="hidden sm:flex flex-col text-right">
+          <span class="text-xs text-blue-200">Số dư khả dụng</span>
+          <span class="text-sm font-bold text-yellow-300 font-mono">{{ account.balance | currency }}</span>
+        </div>
+        {% endif %}
+        <div class="flex items-center space-x-3 border-l border-blue-700 pl-4">
+          <div class="text-right hidden sm:block">
+            <div class="text-xs font-semibold">{{ user.full_name }}</div>
+            <div class="text-[11px] text-blue-300">{{ user.username }}</div>
+          </div>
+          <form method="post" action="/logout" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" title="Đăng xuất"
+                    class="bg-blue-900 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded transition flex items-center space-x-1">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span>Đăng xuất</span>
+            </button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <div class="flex items-center space-x-2">
+        <a href="/login" class="bg-yellow-400 hover:bg-yellow-300 text-blue-900 font-semibold text-sm px-4 py-1.5 rounded transition">
+          Đăng nhập
+        </a>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Mobile Nav Bar -->
+    {% if user %}
+    <div class="md:hidden bg-blue-900 px-4 py-2 flex justify-around text-xs border-t border-blue-800">
+      <a href="/" class="py-1 {% if active_nav == 'home' %}text-yellow-400 font-semibold{% else %}text-blue-200{% endif %}">Trang chủ</a>
+      <a href="/pay" class="py-1 {% if active_nav == 'pay' %}text-yellow-400 font-semibold{% else %}text-blue-200{% endif %}">Thanh toán</a>
+      <a href="/history" class="py-1 {% if active_nav == 'history' %}text-yellow-400 font-semibold{% else %}text-blue-200{% endif %}">Lịch sử</a>
+    </div>
+    {% endif %}
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-grow max-w-6xl w-full mx-auto px-4 sm:px-6 py-6">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 mt-auto">
+    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div>Đồ án Kiến trúc hướng dịch vụ (CS504070 - SOA, HK1/2026-2027)</div>
+      <div class="flex items-center space-x-4">
+        <span>FastAPI</span> · <span>PostgreSQL</span> · <span>HTMX</span> · <span>Mailpit</span>
+      </div>
+    </div>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>
